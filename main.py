@@ -1,7 +1,8 @@
+from sqlalchemy import text
 import telebot
 
 from config import TELEGRAM_TOKEN
-
+from db_connect import db
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -35,11 +36,17 @@ def get_user_address_home(message):
 def get_user_address_job(message):
     user_id = message.from_user.id
     job_address = message.text
-    user_addresses[user_id]['job'] = job_address
+    home_address = user_addresses[user_id]['home']
+    db.execute(
+        text(
+            f"INSERT INTO addresses (user_id, home, job) "
+            f"VALUES ('{user_id}', '{home_address}', '{job_address}');"
+        )
+    )
 
+    db.commit()
     chat_id = message.chat.id
     bot.send_message(chat_id, 'Спасибо. Информация сохранена.')
-    print(user_addresses)
 
 
 def main():
