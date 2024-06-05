@@ -1,8 +1,20 @@
+from telebot.types import ReplyKeyboardMarkup
+import requests
 from sqlalchemy import text
 import telebot
 
-from config import TELEGRAM_TOKEN
+from config import TELEGRAM_TOKEN, DISTANCE_BASE_URL, DISTANCE_MATRIX_KEY
 from db_connect import db
+
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+
+
+def keyboard():
+    markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+    button = KeyboardButton('Получить время в пути')
+    markup.add(button)
+    return markup
+
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -45,8 +57,45 @@ def get_user_address_job(message):
     )
 
     db.commit()
+
     chat_id = message.chat.id
-    bot.send_message(chat_id, 'Спасибо. Информация сохранена.')
+    msg_text = (
+        f'Спасибо. Информация сохранена.'
+        f'Нажмите на кнопку "Получить время в пути".'
+    )
+    bot.send_message(chat_id, msg_text, reply_markup=keyboard())
+
+
+@bot.message_handler(func=lambda message: True)
+def get_info(message):
+    if message.text == 'Получить время в пути':
+        user_id = message.from_user.id
+        user_data = db.execute(
+            text(
+                f"SELECT * "
+                f"FROM addresses "
+                f"WHERE user_id == {user_id};"
+            )
+        ).first()
+
+        query_params = {
+            'key': DISTANCE_MATRIX_KEY,
+            'origins': user_data.home,
+            'destinations': user_data.job,
+        }
+
+        response = requests.get(DISTANCE_BASE_URL, params=query_params)
+        if response.status_code == 200:
+            data = response.json()
+            origin = data.get('origin_addresses')[0]
+            destination = data.get('destination_addresses')[0]
+            try:
+                duration = data['rows'][0]['elements'][0]['duration']['text']
+            except KeyError:
+                pass
+            msg_text = f'Время в пути из {origin} в {
+                destination} занимает {duration}'
+            bot.reply_to(message, msg_text, reply_markup=keyboard())
 
 
 def main():

@@ -7,8 +7,13 @@ db = scoped_session(sessionmaker(bind=engine))
 # db.execute(
 #     text(
 #         f'CREATE TABLE addresses ('
-#         f'user_id VARCHAR NOT NULL UNIQUE,'
+#         f'user_id INTEGER NOT NULL UNIQUE,'
 #         f'home VARCHAR NOT NULL,'
 #         f'job VARCHAR NOT NULL);'
 #     )
 # )
+
+# db.execute(
+#     text('DELETE FROM addresses;')
+# )
+# db.commit()
